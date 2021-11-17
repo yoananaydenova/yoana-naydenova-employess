@@ -20,11 +20,15 @@ public class EmployeeManager {
 
     public static void main(String[] args) {
 
-        Map<Integer, Project> projectsWithEmployees = fileReader(FILE_NAME);
+        try {
+            Map<Integer, Project> projectsWithEmployees = fileReader(FILE_NAME);
 
-        Map<String, Long> teamsOfTwo = teamsWithDays(projectsWithEmployees);
+            Map<String, Long> teamsOfTwo = teamsWithDays(projectsWithEmployees);
 
-        System.out.println(teamWithMaxDays(teamsOfTwo));
+            System.out.println(teamWithMaxDays(teamsOfTwo));
+        }catch (Exception e){
+            System.out.println("Something went wrong.");
+        }
 
     }
 
@@ -37,10 +41,11 @@ public class EmployeeManager {
         if (teamWithMaxDays.isPresent()) {
             String[] teamMembers = teamWithMaxDays.get().getKey().split("-");
             Long days = teamWithMaxDays.get().getValue();
-           return String.format("The team that has worked together the longest on common projects is %s and %s. They worked together: %d days.",
+
+            return String.format("The team that has worked together the longest on common projects is %s and %s. They worked together: %d days.",
                     teamMembers[0], teamMembers[1], days);
         }
-            return "There is no data for a team working together!";
+        return "There is no data for a team working together!";
 
     }
 
