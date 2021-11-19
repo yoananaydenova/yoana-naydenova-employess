@@ -7,7 +7,10 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static java.time.temporal.ChronoUnit.DAYS;
@@ -32,6 +35,7 @@ public class EmployeeManager {
             System.out.println(teamWithMaxDays(teamsOfTwo));
         } catch (Exception e) {
             System.out.println("Something went wrong.");
+            System.out.println(e.getMessage());
         }
 
     }
@@ -50,7 +54,7 @@ public class EmployeeManager {
 
     public static String teamWithMaxDays(Map<String, Long> teamsOfTwo) {
 
-        if(teamsOfTwo.size() == 0){
+        if (teamsOfTwo.size() == 0) {
             return "There is no data for a team working together!";
         }
         Long maxDays = Collections.max(teamsOfTwo.values());
@@ -144,14 +148,18 @@ public class EmployeeManager {
     }
 
 
-    private static Map<Integer, Project> filesReader(Path path) {
-        File folder = path.toFile();
+    private static Map<Integer, Project> filesReader(Path path) throws NoSuchFileException {
 
-        File[] listOfFiles = folder.listFiles();
+        if (isEmpty(path)) {
+            throw new NoSuchFileException("Please create file with needed data in folder \"employees\" on your Desktop. Try again!");
+        }
+
         Map<Integer, Project> projects = new HashMap<>();
 
-        if (listOfFiles != null) {
+        File folder = path.toFile();
+        File[] listOfFiles = folder.listFiles();
 
+        if (listOfFiles != null) {
             for (File file : listOfFiles) {
                 if (file.isFile()) {
                     fileReader(file.getAbsolutePath(), projects);
@@ -160,6 +168,11 @@ public class EmployeeManager {
         }
         return projects;
     }
+
+    public static boolean isEmpty(Path path) {
+        return path.toFile().listFiles().length == 0;
+    }
+
 
     private static void fileReader(String filePath, Map<Integer, Project> projects) {
 
