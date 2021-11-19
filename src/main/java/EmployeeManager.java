@@ -1,7 +1,9 @@
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import javax.swing.filechooser.FileSystemView;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -13,25 +15,44 @@ import static java.time.temporal.ChronoUnit.DAYS;
 public class EmployeeManager {
 
     final static String DATE_FORMAT = "yyyy-MM-dd";
+    final static String DIRECTORY_NAME = "employees";
     final static String FILE_NAME = "data.txt";
 
 
     public static void main(String[] args) {
 
         try {
-            Map<Integer, Project> projectsWithEmployees = fileReader(FILE_NAME);
+
+            Path directoryOnDesktop = createDirectoryOnDesktop(DIRECTORY_NAME);
+
+            Map<Integer, Project> projectsWithEmployees = filesReader(directoryOnDesktop);
 
             Map<String, Long> teamsOfTwo = teamsWithDays(projectsWithEmployees);
 
             System.out.println(teamWithMaxDays(teamsOfTwo));
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println("Something went wrong.");
         }
 
     }
 
+    private static Path createDirectoryOnDesktop(String directoryName) {
+        String absolutePath = FileSystemView.getFileSystemView().getHomeDirectory().getAbsolutePath();
+        String pathWithDir = absolutePath.concat("/Desktop/").concat(directoryName);
+        Path directory = null;
+        try {
+            directory = Files.createDirectories(Paths.get(pathWithDir));
+        } catch (IOException ex) {
+            System.out.println("You don't have write permission in the directory Desktop!");
+        }
+        return directory;
+    }
+
     public static String teamWithMaxDays(Map<String, Long> teamsOfTwo) {
 
+        if(teamsOfTwo.size() == 0){
+            return "There is no data for a team working together!";
+        }
         Long maxDays = Collections.max(teamsOfTwo.values());
         List<Map.Entry<String, Long>> teamsWithMaxDays = teamsOfTwo
                 .entrySet()
@@ -43,7 +64,7 @@ public class EmployeeManager {
 
             StringBuilder sb = new StringBuilder();
             teamsWithMaxDays
-                    .forEach(team ->{
+                    .forEach(team -> {
                         String[] teamMembers = team.getKey().split("-");
                         Long days = team.getValue();
 
@@ -123,11 +144,26 @@ public class EmployeeManager {
     }
 
 
-    private static Map<Integer, Project> fileReader(String fileName) {
+    private static Map<Integer, Project> filesReader(Path path) {
+        File folder = path.toFile();
 
+        File[] listOfFiles = folder.listFiles();
         Map<Integer, Project> projects = new HashMap<>();
 
-        try (BufferedReader br = new BufferedReader(new FileReader("src/main/resources/" + fileName))) {
+        if (listOfFiles != null) {
+
+            for (File file : listOfFiles) {
+                if (file.isFile()) {
+                    fileReader(file.getAbsolutePath(), projects);
+                }
+            }
+        }
+        return projects;
+    }
+
+    private static void fileReader(String filePath, Map<Integer, Project> projects) {
+
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String record;
 
             while ((record = br.readLine()) != null) {
@@ -170,7 +206,6 @@ public class EmployeeManager {
             System.out.println("File read error!");
         }
 
-        return projects;
     }
 
     private static Integer parseIdNumber(String inputNumber) {
