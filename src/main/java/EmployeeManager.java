@@ -5,10 +5,8 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 
@@ -33,17 +31,28 @@ public class EmployeeManager {
     }
 
     public static String teamWithMaxDays(Map<String, Long> teamsOfTwo) {
-        Optional<Map.Entry<String, Long>> teamWithMaxDays = teamsOfTwo
+
+        Long maxDays = Collections.max(teamsOfTwo.values());
+        List<Map.Entry<String, Long>> teamsWithMaxDays = teamsOfTwo
                 .entrySet()
                 .stream()
-                .max(Map.Entry.comparingByValue());
+                .filter(e -> e.getValue().equals(maxDays))
+                .collect(Collectors.toList());
 
-        if (teamWithMaxDays.isPresent()) {
-            String[] teamMembers = teamWithMaxDays.get().getKey().split("-");
-            Long days = teamWithMaxDays.get().getValue();
+        if (!teamsWithMaxDays.isEmpty()) {
 
-            return String.format("The team that has worked together the longest on common projects is %s and %s. They worked together: %d days.",
-                    teamMembers[0], teamMembers[1], days);
+            StringBuilder sb = new StringBuilder();
+            teamsWithMaxDays
+                    .forEach(team ->{
+                        String[] teamMembers = team.getKey().split("-");
+                        Long days = team.getValue();
+
+                        sb.append(String.format("The team that has worked together the longest on common projects is %s and %s. They worked together: %d days.",
+                                teamMembers[0], teamMembers[1], days));
+                        sb.append(System.lineSeparator());
+                    });
+
+            return sb.toString();
         }
         return "There is no data for a team working together!";
 
@@ -60,6 +69,7 @@ public class EmployeeManager {
 
                 for (int k = i + 1; k < employeesList.size(); k++) {
                     Employee secondEmp = employeesList.get(k);
+
 
                     if (firstEmp.getEmpId() == secondEmp.getEmpId() || firstEmp.getDateTo().isBefore(secondEmp.getDateFrom()) ||
                             secondEmp.getDateTo().isBefore(firstEmp.getDateFrom())) {
@@ -87,9 +97,9 @@ public class EmployeeManager {
                     if (period != 0) {
                         String teamsId = firstEmp.getEmpId() + "-" + secondEmp.getEmpId();
                         if (teamsOfTwo.containsKey(teamsId)) {
-                            teamsOfTwo.put(teamsId, teamsOfTwo.get(teamsId) + period);
+                            teamsOfTwo.put(teamsId, teamsOfTwo.get(teamsId) + period + 1L);
                         } else {
-                            teamsOfTwo.put(teamsId, period);
+                            teamsOfTwo.put(teamsId, period + 1L);
                         }
                     }
                 }
@@ -116,7 +126,7 @@ public class EmployeeManager {
     private static Map<Integer, Project> fileReader(String fileName) {
 
         Map<Integer, Project> projects = new HashMap<>();
-//
+
         try (BufferedReader br = new BufferedReader(new FileReader("src/main/resources/" + fileName))) {
             String record;
 
