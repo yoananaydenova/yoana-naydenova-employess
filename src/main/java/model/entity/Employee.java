@@ -1,3 +1,5 @@
+package model.entity;
+
 import java.time.LocalDate;
 import java.util.Objects;
 
@@ -28,7 +30,7 @@ public class Employee {
 
     @Override
     public String toString() {
-        return "Employee{" +
+        return "model.entity.Employee{" +
                 "empId=" + empId +
                 ", dateFrom=" + dateFrom +
                 ", dateTo=" + dateTo +

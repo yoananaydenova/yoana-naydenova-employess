@@ -1,61 +1,41 @@
-import javax.swing.filechooser.FileSystemView;
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import model.dto.RecordDetails;
+import model.entity.Employee;
+import model.entity.Project;
+import utils.EmployeeFileReader;
+
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 
 public class EmployeeManager {
 
-    final static String DATE_FORMAT = "yyyy-MM-dd";
-    final static String DIRECTORY_NAME = "employees";
-    final static String FILE_NAME = "data.txt";
-
-
-    public static void main(String[] args) {
+    public String run() {
+        System.out.println("Enter the name of the folder on the desktop where you saved the employee data files.");
+        Scanner in = new Scanner(System.in);
+        String folderName = in.nextLine();
 
         try {
+            List<RecordDetails> recordDetails = EmployeeFileReader.filesReader(folderName);
 
-            Path directoryOnDesktop = createDirectoryOnDesktop(DIRECTORY_NAME);
+            Map<Integer, Project> projectsWithEmployees = createProjectsWithEmployees(recordDetails);
 
-            Map<Integer, Project> projectsWithEmployees = filesReader(directoryOnDesktop);
+            Map<String, Long> teamsOfTwo = createTeamsWithDays(projectsWithEmployees);
 
-            Map<String, Long> teamsOfTwo = teamsWithDays(projectsWithEmployees);
+            return (findTeamsWithMaxDays(teamsOfTwo));
 
-            System.out.println(teamWithMaxDays(teamsOfTwo));
         } catch (Exception e) {
-            System.out.println("Something went wrong.");
-            System.out.println(e.getMessage());
+            return (e.getMessage());
         }
-
     }
 
-    private static Path createDirectoryOnDesktop(String directoryName) {
-        String absolutePath = FileSystemView.getFileSystemView().getHomeDirectory().getAbsolutePath();
-        String pathWithDir = absolutePath.concat("/Desktop/").concat(directoryName);
-        Path directory = null;
-        try {
-            directory = Files.createDirectories(Paths.get(pathWithDir));
-        } catch (IOException ex) {
-            System.out.println("You don't have write permission in the directory Desktop!");
-        }
-        return directory;
-    }
 
-    public static String teamWithMaxDays(Map<String, Long> teamsOfTwo) {
+    private String findTeamsWithMaxDays(Map<String, Long> teamsOfTwo) {
 
+        String result = "There is no data for a team working together!";
         if (teamsOfTwo.size() == 0) {
-            return "There is no data for a team working together!";
+            return result;
         }
         Long maxDays = Collections.max(teamsOfTwo.values());
         List<Map.Entry<String, Long>> teamsWithMaxDays = teamsOfTwo
@@ -79,12 +59,27 @@ public class EmployeeManager {
 
             return sb.toString();
         }
-        return "There is no data for a team working together!";
-
+        return result;
     }
 
+    private Map<Integer, Project> createProjectsWithEmployees(List<RecordDetails> recordDetails) {
+        Map<Integer, Project> projectsWithEmployees = new HashMap<>();
+        recordDetails.forEach(entity -> {
+            Employee employee = new Employee(entity.getEmpId(), entity.getDateFrom(), entity.getDateTo());
 
-    public static Map<String, Long> teamsWithDays(Map<Integer, Project> projectsWithEmployees) {
+            if (projectsWithEmployees.containsKey(entity.getProjectId())) {
+                projectsWithEmployees.get(entity.getProjectId()).addEmployee(employee);
+            } else {
+                Project project = new Project(entity.getProjectId());
+                project.addEmployee(employee);
+                projectsWithEmployees.put(entity.getProjectId(), project);
+            }
+        });
+        return projectsWithEmployees;
+    }
+
+    private Map<String, Long> createTeamsWithDays(Map<Integer, Project> projectsWithEmployees) {
+
         Map<String, Long> teamsOfTwo = new HashMap<>();
         projectsWithEmployees.forEach((key, value) -> {
             List<Employee> employeesList = value.getEmployees();
@@ -105,7 +100,6 @@ public class EmployeeManager {
                     // 1. if start and finish together
                     // 2. if first and second start together - first/second finish, then other finish
                     if (firstEmp.getDateFrom().isEqual(secondEmp.getDateFrom())) {
-
                         LocalDate secondDate = findBeforeDate(firstEmp.getDateTo(), secondEmp.getDateTo());
                         period = DAYS.between(firstEmp.getDateFrom(), secondDate);
                     } else if (firstEmp.getDateTo().isEqual(secondEmp.getDateTo())) {
@@ -133,14 +127,14 @@ public class EmployeeManager {
         return teamsOfTwo;
     }
 
-    private static LocalDate findBeforeDate(LocalDate dateOne, LocalDate dateTwo) {
+    private LocalDate findBeforeDate(LocalDate dateOne, LocalDate dateTwo) {
         if (dateOne.isBefore(dateTwo)) {
             return dateOne;
         }
         return dateTwo;
     }
 
-    private static LocalDate findAfterDate(LocalDate dateOne, LocalDate dateTwo) {
+    private LocalDate findAfterDate(LocalDate dateOne, LocalDate dateTwo) {
         if (dateOne.isAfter(dateTwo)) {
             return dateOne;
         }
@@ -148,101 +142,4 @@ public class EmployeeManager {
     }
 
 
-    private static Map<Integer, Project> filesReader(Path path) throws NoSuchFileException {
-
-        if (isEmpty(path)) {
-            throw new NoSuchFileException("Please create file with needed data in folder \"employees\" on your Desktop. Try again!");
-        }
-
-        Map<Integer, Project> projects = new HashMap<>();
-
-        File folder = path.toFile();
-        File[] listOfFiles = folder.listFiles();
-
-        if (listOfFiles != null) {
-            for (File file : listOfFiles) {
-                if (file.isFile()) {
-                    fileReader(file.getAbsolutePath(), projects);
-                }
-            }
-        }
-        return projects;
-    }
-
-    public static boolean isEmpty(Path path) {
-        return path.toFile().listFiles().length == 0;
-    }
-
-
-    private static void fileReader(String filePath, Map<Integer, Project> projects) {
-
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String record;
-
-            while ((record = br.readLine()) != null) {
-
-                String[] data = record.split("\\s*,\\s*");
-
-                if (data.length < 4) {
-                    System.out.printf("The record %s can not be save. There is errors in it!\n", record);
-                    continue;
-                }
-
-
-                Integer empId = parseIdNumber(data[0]);
-                Integer projectId = parseIdNumber(data[1]);
-                LocalDate dateFrom = parseDateFormat(data[2]);
-                LocalDate dateTo = parseDateFormat(data[3]);
-
-                if (empId == null || projectId == null || dateFrom == null || dateTo == null) {
-                    System.out.printf("The record %s can not be save. There is errors in it!\n", record);
-                } else {
-                    if (dateFrom.isAfter(dateTo)) {
-                        System.out.printf("The record %s can not be save. The dateFrom is after the dateTo!\n", record);
-                    }
-
-                    Project project = new Project(projectId);
-                    Employee employee = new Employee(empId, dateFrom, dateTo);
-
-                    if (projects.containsKey(projectId)) {
-                        projects.get(projectId).addEmployee(employee);
-                    } else {
-                        project.addEmployee(employee);
-                        projects.put(projectId, project);
-                    }
-                }
-            }
-
-        } catch (FileNotFoundException e) {
-            System.out.println("File is not found!\n Please add text file with records of employees in format: EmpID/number/, ProjectID/number/, DateFrom/yyyy-MM-dd/, DateTo/yyyy-MM-dd/.\n You must give name of the file \"data.txt\" and save it into directory src/main/resources/ of the project.\n After that you can Run the project again.");
-        } catch (IOException e) {
-            System.out.println("File read error!");
-        }
-
-    }
-
-    private static Integer parseIdNumber(String inputNumber) {
-        try {
-            return Integer.parseInt(inputNumber);
-        } catch (NumberFormatException e) {
-            System.out.printf("The format of the id number \"%s\" is broken!\n", inputNumber);
-            return null;
-        }
-    }
-
-    private static LocalDate parseDateFormat(String inputDate) {
-        LocalDate correctDate = null;
-        if (inputDate.toUpperCase().equals("NULL")) {
-            correctDate = LocalDate.now();
-        } else {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
-            try {
-                correctDate = LocalDate.parse(inputDate, formatter);
-            } catch (DateTimeParseException e) {
-                System.out.printf("The format of the date \"%s\" is broken!\n", inputDate);
-            }
-        }
-
-        return correctDate;
-    }
 }

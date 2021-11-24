@@ -1,3 +1,5 @@
+package model.entity;
+
 import java.util.ArrayList;
 import java.util.List;
 
